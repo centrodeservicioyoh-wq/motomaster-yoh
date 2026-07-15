@@ -1,0 +1,365 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  role          Role      @default(VENDEDOR)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sales         Sale[]
+  workOrders    WorkOrder[]
+  cashRegisters CashRegister[]
+  purchases     Purchase[]
+  laborServices LaborService[]
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  VENDEDOR
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Brand {
+  id        String    @id @default(uuid())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  products  Product[]
+
+  @@map("brands")
+}
+
+model Product {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  name        String
+  description String?
+  categoryId  String
+  brandId     String
+  costPrice   Decimal   @db.Decimal(10, 2)
+  salePrice   Decimal   @db.Decimal(10, 2)
+  stock       Int       @default(0)
+  minStock    Int       @default(5)
+  location    String?
+  image       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  category    Category  @relation(fields: [categoryId], references: [id])
+  brand       Brand     @relation(fields: [brandId], references: [id])
+  saleItems   SaleItem[]
+  purchaseItems PurchaseItem[]
+  workOrderItems WorkOrderItem[]
+
+  @@map("products")
+}
+
+model Supplier {
+  id           String    @id @default(uuid())
+  name         String
+  contact      String?
+  phone        String?
+  email        String?
+  address      String?
+  paymentTerms String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  purchases    Purchase[]
+
+  @@map("suppliers")
+}
+
+model Purchase {
+  id          String         @id @default(uuid())
+  supplierId  String
+  userId      String
+  total       Decimal        @db.Decimal(10, 2)
+  date        DateTime       @default(now())
+  status      PurchaseStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  supplier    Supplier       @relation(fields: [supplierId], references: [id])
+  user        User           @relation(fields: [userId], references: [id])
+  items       PurchaseItem[]
+
+  @@map("purchases")
+}
+
+enum PurchaseStatus {
+  PENDING
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseItem {
+  id         String   @id @default(uuid())
+  purchaseId String
+  productId  String
+  quantity   Int
+  costPrice  Decimal  @db.Decimal(10, 2)
+  subtotal   Decimal  @db.Decimal(10, 2)
+
+  purchase   Purchase @relation(fields: [purchaseId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+
+  @@map("purchase_items")
+}
+
+model Customer {
+  id            String    @id @default(uuid())
+  name          String
+  phone         String?
+  email         String?
+  address       String?
+  taxId         String?
+  creditLimit   Decimal   @default(0) @db.Decimal(10, 2)
+  currentBalance Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sales         Sale[]
+  motorcycles   Motorcycle[]
+  workOrders    WorkOrder[]
+
+  @@map("customers")
+}
+
+model Sale {
+  id            String       @id @default(uuid())
+  customerId    String?
+  userId        String
+  subtotal      Decimal      @db.Decimal(10, 2)
+  tax           Decimal      @default(0) @db.Decimal(10, 2)
+  total         Decimal      @db.Decimal(10, 2)
+  paymentMethod PaymentMethod @default(CASH)
+  status        SaleStatus   @default(COMPLETED)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  customer      Customer?    @relation(fields: [customerId], references: [id])
+  user          User         @relation(fields: [userId], references: [id])
+  items         SaleItem[]
+
+  @@map("sales")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  CREDIT
+}
+
+enum SaleStatus {
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+model SaleItem {
+  id        String  @id @default(uuid())
+  saleId    String
+  productId String
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  costPrice Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+  profit    Decimal @db.Decimal(10, 2)
+
+  sale      Sale    @relation(fields: [saleId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("sale_items")
+}
+
+model CashRegister {
+  id                    String   @id @default(uuid())
+  userId                String
+  date                  DateTime @default(now())
+  openingBalance        Decimal  @default(0) @db.Decimal(10, 2)
+  closingBalance        Decimal? @db.Decimal(10, 2)
+  
+  totalSalesRefacciones Decimal  @default(0) @db.Decimal(10, 2)
+  totalCostRefacciones  Decimal  @default(0) @db.Decimal(10, 2)
+  profitRefacciones     Decimal  @default(0) @db.Decimal(10, 2)
+  
+  totalLabor            Decimal  @default(0) @db.Decimal(10, 2)
+  profitLabor           Decimal  @default(0) @db.Decimal(10, 2)
+  
+  totalProfit           Decimal  @default(0) @db.Decimal(10, 2)
+  cashReceived          Decimal  @default(0) @db.Decimal(10, 2)
+  cardReceived          Decimal  @default(0) @db.Decimal(10, 2)
+  creditSales           Decimal  @default(0) @db.Decimal(10, 2)
+  
+  status                CashRegisterStatus @default(OPEN)
+  openingTime           DateTime @default(now())
+  closingTime           DateTime?
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id])
+
+  @@map("cash_registers")
+}
+
+enum CashRegisterStatus {
+  OPEN
+  CLOSED
+}
+
+model Motorcycle {
+  id          String    @id @default(uuid())
+  customerId  String
+  brand       String
+  model       String
+  year        Int?
+  color       String?
+  plate       String?
+  vin         String?
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  workOrders  WorkOrder[]
+
+  @@map("motorcycles")
+}
+
+model WorkOrder {
+  id                  String        @id @default(uuid())
+  motorcycleId        String
+  customerId          String
+  mechanicId          String
+  problemDescription  String
+  diagnosis           String?
+  estimatedCost       Decimal?      @db.Decimal(10, 2)
+  finalCost           Decimal?      @db.Decimal(10, 2)
+  status              WorkOrderStatus @default(RECEIVED)
+  priority            Priority      @default(MEDIUM)
+  estimatedHours      Decimal?      @db.Decimal(5, 2)
+  actualHours         Decimal?      @db.Decimal(5, 2)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  deliveredAt         DateTime?
+
+  motorcycle          Motorcycle    @relation(fields: [motorcycleId], references: [id])
+  customer            Customer      @relation(fields: [customerId], references: [id])
+  mechanic            User          @relation(fields: [mechanicId], references: [id])
+  items               WorkOrderItem[]
+  laborServices       LaborService[]
+
+  @@map("work_orders")
+}
+
+enum WorkOrderStatus {
+  RECEIVED
+  DIAGNOSING
+  REPAIRING
+  READY
+  DELIVERED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model WorkOrderItem {
+  id          String   @id @default(uuid())
+  workOrderId String
+  productId   String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  subtotal    Decimal  @db.Decimal(10, 2)
+
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])
+  product     Product   @relation(fields: [productId], references: [id])
+
+  @@map("work_order_items")
+}
+
+model LaborService {
+  id          String   @id @default(uuid())
+  workOrderId String
+  mechanicId  String
+  description String
+  hours       Decimal  @db.Decimal(5, 2)
+  ratePerHour Decimal  @db.Decimal(10, 2)
+  total       Decimal  @db.Decimal(10, 2)
+  cost        Decimal  @default(0) @db.Decimal(10, 2)
+  profit      Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])
+  mechanic    User      @relation(fields: [mechanicId], references: [id])
+
+  @@map("labor_services")
+}
+
+model WhatsAppMessage {
+  id         String   @id @default(uuid())
+  customerId String
+  workOrderId String?
+  message    String
+  direction  MessageDirection
+  sentAt     DateTime @default(now())
+  status     MessageStatus @default(SENT)
+
+  @@map("whatsapp_messages")
+}
+
+enum MessageDirection {
+  IN
+  OUT
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+model DailyReport {
+  id              String   @id @default(uuid())
+  date            DateTime @unique @db.Date
+  totalSales      Decimal  @db.Decimal(10, 2)
+  totalProfit     Decimal  @db.Decimal(10, 2)
+  totalLabor      Decimal  @db.Decimal(10, 2)
+  totalMechanicsPaid Decimal @db.Decimal(10, 2)
+  totalCashRegister Decimal @db.Decimal(10, 2)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("daily_reports")
+}
