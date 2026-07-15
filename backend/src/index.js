@@ -34,6 +34,15 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/cash-register', cashRegisterRoutes);
 
 app.get('/api', (req, res) => {
+
+// Ruta raíz
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'MOTOMASTER YOH - Sistema de Gestión',
+    api: '/api',
+    status: 'Online'
+  });
+});
   res.json({ message: 'API de MOTOMASTER YOH - Funcionando' });
 });
 
