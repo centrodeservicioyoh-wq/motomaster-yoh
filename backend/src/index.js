@@ -53,7 +53,15 @@ app.get('/', (req, res) => {
   res.json({ message: 'API de MOTOMASTER YOH - Funcionando' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+
+// Ruta raíz
+app.get('/', (req, res) => {
+  res.json({
+    message: 'MOTOMASTER YOH - Sistema de Gestión',
+    api: '/api',
+    status: 'Online'
+  });
+});app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📦 Base de datos: refaccionaria_taller`);
 });
